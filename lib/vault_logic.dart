@@ -8,11 +8,9 @@ import 'database_helper.dart';
 
 class VaultLogic {
   static const String hiddenFolderName = '.sys_data';
-
   static const List<String> excludedExtensions = [
     '.lnk',
     '.url',
-    '.exe',
   ];
 
   static Future<void> lockEverything({
@@ -24,6 +22,8 @@ class VaultLogic {
     final hiddenDir = Directory(
       p.join(appDir.path, hiddenFolderName),
     );
+
+    final String ownExecutablePath = p.canonicalize(Platform.resolvedExecutable);
 
     if (!await hiddenDir.exists()) {
       await hiddenDir.create(recursive: true);
@@ -39,12 +39,14 @@ class VaultLogic {
     final dbName = 'vault_index.db';
 
     for (final entity in entities) {
+      final absolutePath = p.canonicalize(entity.path);
       final name = p.basename(entity.path);
       final ext = p.extension(entity.path).toLowerCase();
 
       if (name == appDirName ||
           name == hiddenFolderName ||
           name == dbName ||
+          absolutePath == ownExecutablePath || 
           excludedExtensions.contains(ext)) {
         continue;
       }
