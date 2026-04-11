@@ -11,6 +11,9 @@ It is optimized for:
 
 > **Fast portable privacy — without encrypting terabytes of data.**
 
+
+https://github.com/user-attachments/assets/fcaad4f1-2466-41f4-be64-e37280f4a6e7
+
 ---
 
 ## 🚀 What NullFiles Actually Is
