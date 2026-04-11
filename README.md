@@ -52,8 +52,7 @@ NullFiles is designed for:
 - advanced reverse engineering
 - attackers inspecting raw blob contents
 
-Important:
-
+> [!IMPORTANT]
 > NullFiles protects metadata cryptographically, but in fast mode it does **not encrypt file contents themselves**.
 
 That design choice is intentional for speed and portability.
