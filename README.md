@@ -2,15 +2,19 @@
 
 **NullFiles** is a portable privacy tool for USB drives and external storage that quickly hides and protects files by relocating them into a protected internal vault structure with encrypted metadata indexing.
 
+### Portable Hybrid Vault System
+1. **The Stealth Layer (Fast):** Moves files into a hidden internal vault folder and renames them with randomized identifiers. Original file structures disappear instantly.
+2. **The Crypto Layer (Deep):** Allows applying **AES-256-GCM encryption** to specific files or entire folders (recursively) inside the vault.
+
 It is optimized for:
 
 - speed on large portable drives
 - low memory usage
 - minimal write amplification on USB devices
 - practical everyday privacy on removable media
+- Sensitive documents that require actual cryptographic protection.
 
 > **Fast portable privacy — without encrypting terabytes of data.**
-
 
 https://github.com/user-attachments/assets/fcaad4f1-2466-41f4-be64-e37280f4a6e7
 
@@ -49,11 +53,11 @@ NullFiles is designed for:
 - opportunistic snooping
 - someone browsing your USB manually
 - accidental exposure of visible file names
+- **Targeted Security** The confidential items you choose will be fully encrypted, making them unreadable even if the vault is found.
 
 ### Limited protection against:
 - forensic analysis
 - advanced reverse engineering
-- attackers inspecting raw blob contents
 
 > [!IMPORTANT]
 > NullFiles protects metadata cryptographically, but in fast mode it does **not encrypt file contents themselves**.
@@ -105,25 +109,10 @@ Protected metadata includes:
 
 ---
 ### 3. Cryptographic Protection
-NullFiles uses:
+NullFiles has a recursive encryption engine that uses:
 
-**Argon2id**
-
-For master password key derivation.
-
-This protects against:
-
-* brute force attacks
-* GPU cracking attempts
-* rainbow table attacks
-
-**AES-256-GCM**
-
-Used to encrypt metadata securely with:
-
-* confidentiality
-* authentication
-* tamper detection
+- **Argon2id** For master password key derivation
+- **AES-256-GCM** For metadata and optinal file content encryption (Authenticated Encryption)
 
 ---
 
