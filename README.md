@@ -113,6 +113,7 @@ NullFiles has a recursive encryption engine that uses:
 
 - **Argon2id** For master password key derivation
 - **AES-256-GCM** For metadata and optinal file content encryption (Authenticated Encryption)
+- **Encrypted Index** Mapping between fake names and real paths is stored in an encrypted SQLite database.
 
 ---
 
@@ -181,9 +182,8 @@ Everything stays local.
 
 NullFiles is NOT:
 
-* full file encryption
-* disk encryption
-* military-grade secure wipe
+* full-disk encryption (like bitlocker, veracrypt etc etc)
+* A tool for plausible deniability (no hidden volumes).
 * ransomware-proof storage
 
 If your threat model requires protection against forensic attackers:
