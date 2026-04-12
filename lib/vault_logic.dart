@@ -1,9 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-
 import 'package:path/path.dart' as p;
-
 import 'database_helper.dart';
 
 class VaultLogic {
@@ -13,15 +11,36 @@ class VaultLogic {
     '.url',
   ];
 
+  static Future<Map<String, int>> checkHealth({
+    required String appDirPath,
+  }) async {
+    final files = await VaultDatabase.getFiles();
+    final hiddenDir = Directory(p.join(appDirPath, hiddenFolderName));
+    
+    int healthy = 0;
+    int missing = 0;
+
+    for (final file in files) {
+      final path = p.join(hiddenDir.path, file.fakeName);
+      final exists = await File(path).exists() || await Directory(path).exists();
+      
+      if (exists) {
+        healthy++;
+      } else {
+        missing++;
+      }
+    }
+    return {'healthy': healthy, 'missing': missing};
+  }
+
   static Future<void> lockEverything({
     required String rootPath,
     required String appDirPath,
+    bool encryptContent = false, 
   }) async {
     final rootDir = Directory(rootPath);
     final appDir = Directory(appDirPath);
-    final hiddenDir = Directory(
-      p.join(appDir.path, hiddenFolderName),
-    );
+    final hiddenDir = Directory(p.join(appDir.path, hiddenFolderName));
 
     final String ownExecutablePath = p.canonicalize(Platform.resolvedExecutable);
 
@@ -51,16 +70,11 @@ class VaultLogic {
         continue;
       }
 
-      final fakeName = _generateRandomFakeName(
-        isDirectory: entity is Directory,
-      );
-
-      final destination = p.join(
-        hiddenDir.path,
-        fakeName,
-      );
+      final fakeName = _generateRandomFakeName(isDirectory: entity is Directory);
+      final destination = p.join(hiddenDir.path, fakeName);
 
       bool moved = false;
+      bool contentEncrypted = false;
 
       try {
         int size = 0;
@@ -73,6 +87,16 @@ class VaultLogic {
         await entity.rename(destination);
         moved = true;
 
+        if (encryptContent) {
+          if (isDir) {
+            await VaultDatabase.encryptRecursive(destination);
+          } else {
+            await VaultDatabase.encryptFileContent(destination);
+            size = await File(destination).length();
+          }
+          contentEncrypted = true;
+        }
+
         await VaultDatabase.registerFile(
           VaultRecord(
             fakeName: fakeName,
@@ -81,13 +105,13 @@ class VaultLogic {
             isDirectory: isDir,
             fileSize: size,
             createdAt: DateTime.now().millisecondsSinceEpoch,
+            isContentEncrypted: contentEncrypted,
           ),
         );
       } catch (e) {
         if (moved) {
           try {
             final rollbackPath = p.join(rootDir.path, name);
-
             if (entity is Directory) {
               await Directory(destination).rename(rollbackPath);
             } else {
@@ -95,8 +119,62 @@ class VaultLogic {
             }
           } catch (_) {}
         }
-
         stderr.writeln('Lock error on $name: $e');
+      }
+    }
+  }
+
+  static Future<void> unlockSelected({
+    required String rootPath,
+    required String appDirPath,
+    required List<VaultRecord> selectedFiles,
+    bool overwriteExisting = false,
+  }) async {
+    final rootDir = Directory(rootPath);
+    final appDir = Directory(appDirPath);
+    final hiddenDir = Directory(p.join(appDir.path, hiddenFolderName));
+
+    for (final file in selectedFiles) {
+      final source = p.join(hiddenDir.path, file.fakeName);
+      final destination = p.join(rootDir.path, file.relativePath);
+
+      try {
+        final exists = await File(source).exists() || await Directory(source).exists();
+
+        if (!exists) {
+          stderr.writeln('Missing hidden file: ${file.fakeName}');
+          continue;
+        }
+
+        final destExists = await File(destination).exists() || await Directory(destination).exists();
+
+        if (destExists && !overwriteExisting) {
+          stderr.writeln('Destination already exists: $destination');
+          continue;
+        }
+
+        final destDir = Directory(p.dirname(destination));
+        if (!await destDir.exists()) {
+          await destDir.create(recursive: true);
+        }
+
+        if (file.isContentEncrypted) {
+          if (file.isDirectory) {
+            await VaultDatabase.decryptRecursive(source);
+          } else {
+            await VaultDatabase.decryptFileContent(source);
+          }
+        }
+
+        if (file.isDirectory) {
+          await Directory(source).rename(destination);
+        } else {
+          await File(source).rename(destination);
+        }
+
+        await VaultDatabase.removeFileByFakeName(file.fakeName);
+      } catch (e) {
+        stderr.writeln('Unlock error on ${file.realName}: $e');
       }
     }
   }
@@ -106,69 +184,13 @@ class VaultLogic {
     required String appDirPath,
     bool overwriteExisting = false,
   }) async {
-    final rootDir = Directory(rootPath);
-    final appDir = Directory(appDirPath);
-    final hiddenDir = Directory(
-      p.join(appDir.path, hiddenFolderName),
-    );
-
     final files = await VaultDatabase.getFiles();
-
-    for (final file in files) {
-      final source = p.join(
-        hiddenDir.path,
-        file.fakeName,
-      );
-
-      final destination = p.join(
-        rootDir.path,
-        file.relativePath,
-      );
-
-      try {
-        final exists = await File(source).exists() ||
-            await Directory(source).exists();
-
-        if (!exists) {
-          stderr.writeln(
-            'Missing hidden file: ${file.fakeName}',
-          );
-          continue;
-        }
-
-        final destExists = await File(destination).exists() ||
-            await Directory(destination).exists();
-
-        if (destExists && !overwriteExisting) {
-          stderr.writeln(
-            'Destination already exists: $destination',
-          );
-          continue;
-        }
-
-        final destDir = Directory(
-          p.dirname(destination),
-        );
-
-        if (!await destDir.exists()) {
-          await destDir.create(recursive: true);
-        }
-
-        if (file.isDirectory) {
-          await Directory(source).rename(destination);
-        } else {
-          await File(source).rename(destination);
-        }
-
-        await VaultDatabase.removeFileByFakeName(
-          file.fakeName,
-        );
-      } catch (e) {
-        stderr.writeln(
-          'Unlock error on ${file.realName}: $e',
-        );
-      }
-    }
+    await unlockSelected(
+      rootPath: rootPath,
+      appDirPath: appDirPath,
+      selectedFiles: files,
+      overwriteExisting: overwriteExisting,
+    );
   }
 
   static String _generateRandomFakeName({
@@ -177,18 +199,13 @@ class VaultLogic {
     final random = Random.secure();
     final bytes = List<int>.generate(18, (_) => random.nextInt(256));
     final token = base64UrlEncode(bytes).replaceAll('=', '');
-
     return isDirectory ? 'dir_$token' : 'blob_$token';
   }
 
   static Future<void> _hideDirectory(String path) async {
     if (!Platform.isWindows) return;
-
     try {
-      await Process.run(
-        'attrib',
-        ['+h', '+s', path],
-      );
+      await Process.run('attrib', ['+h', '+s', path]);
     } catch (_) {}
   }
 }
