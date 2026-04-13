@@ -1,20 +1,19 @@
 # 🛡️ NullFiles
 
-**NullFiles** is a portable privacy tool for USB drives and external storage that quickly hides and protects files by relocating them into a protected internal vault structure with encrypted metadata indexing.
+**NullFiles** is a portable privacy tool for USB drives and external storage that protects files using a **hybrid vault model**:
 
-### Portable Hybrid Vault System
-1. **The Stealth Layer (Fast):** Moves files into a hidden internal vault folder and renames them with randomized identifiers. Original file structures disappear instantly.
-2. **The Crypto Layer (Deep):** Allows applying **AES-256-GCM encryption** to specific files or entire folders (recursively) inside the vault.
+- **Fast Mode:** moves files into a hidden internal vault and renames them with randomized identifiers
+- **Deep Mode:** optionally encrypts selected files or folders inside the vault using authenticated encryption
 
-It is optimized for:
+This design is optimized for:
 
 - speed on large portable drives
 - low memory usage
 - minimal write amplification on USB devices
 - practical everyday privacy on removable media
-- Sensitive documents that require actual cryptographic protection.
+- selective cryptographic protection for sensitive files
 
-> **Fast portable privacy — without encrypting terabytes of data.**
+> **Fast portable privacy, with optional deep encryption where it matters.**
 
 https://github.com/user-attachments/assets/fcaad4f1-2466-41f4-be64-e37280f4a6e7
 
@@ -26,14 +25,18 @@ NullFiles is **not full-disk encryption**, and it is **not a VeraCrypt-style enc
 
 Instead, it is a:
 
-### Portable Fast-Lock Vault System
+## Portable Hybrid Vault System
 
-It protects your files by:
+It protects your files by combining two layers:
 
-1. Moving them into a hidden internal vault folder
-2. Renaming them with randomized cryptographic identifiers
-3. Encrypting all vault metadata (real names and paths)
-4. Making original file structure unreadable without unlocking
+### 1. Stealth Layer
+- files are moved into a hidden internal vault folder
+- original visible names disappear from the root of the drive
+- each file or folder receives a randomized identifier
+
+### 2. Crypto Layer
+- vault metadata is encrypted
+- selected files or folders can also be encrypted recursively inside the vault
 
 This makes NullFiles ideal for:
 
@@ -41,6 +44,7 @@ This makes NullFiles ideal for:
 - external hard drives
 - fast hide/unhide workflows
 - large collections of files where full encryption is impractical
+- sensitive documents that need real cryptographic protection
 
 ---
 
@@ -48,35 +52,34 @@ This makes NullFiles ideal for:
 
 NullFiles is designed for:
 
-### Strong protection against:
+### Effective protection against:
 - casual unauthorized access
 - opportunistic snooping
-- someone browsing your USB manually
+- someone manually browsing your USB drive
 - accidental exposure of visible file names
-- **Targeted Security** The confidential items you choose will be fully encrypted, making them unreadable even if the vault is found.
+- recovery of selected encrypted files without the correct master key
 
 ### Limited protection against:
-- forensic analysis
+- full forensic analysis
 - advanced reverse engineering
+- highly specialized post-compromise investigation
 
 > [!IMPORTANT]
-> NullFiles protects metadata cryptographically, but in fast mode it does **not encrypt file contents themselves**.
+> NullFiles always protects vault metadata cryptographically, but **file contents are only encrypted when you explicitly enable content encryption**.
 
-That design choice is intentional for speed and portability.
+That tradeoff is intentional: it preserves speed and portability while still allowing stronger protection for selected data.
 
 ---
 
 ## 🛠️ How It Works
 
----
-
 ### 1. Fast Relocation Layer
 
-When vault is locked:
+When the vault is locked:
 
 - files are moved into `.sys_data`
 - original filenames disappear
-- each file gets a randomized secure fake identifier
+- each file gets a randomized fake identifier
 
 Example:
 
@@ -106,14 +109,20 @@ Protected metadata includes:
 
 * real file names
 * original relative paths
+* vault indexing information
 
 ---
 ### 3. Cryptographic Protection
-NullFiles has a recursive encryption engine that uses:
+NullFiles uses:
 
 - **Argon2id** For master password key derivation
 - **AES-256-GCM** For metadata and optinal file content encryption (Authenticated Encryption)
-- **Encrypted Index** Mapping between fake names and real paths is stored in an encrypted SQLite database.
+- **SQLite (encrypted metadata mapping)** to track the relationship between randomized vault names and original file structure
+
+This gives NullFiles a hybrid model:
+
+* **fast concealment** for large datasets
+* **real encryption** for selected sensitive content
 
 ---
 
@@ -133,11 +142,9 @@ On Windows:
 
 ---
 
-### ⚡ Why NullFiles Does NOT Encrypt File Contents
+### ⚡ Why NullFiles Uses Optional Content Encryption
 
-This is intentional.
-
-Encrypting large USB drives fully creates problems:
+Encrypting an entire USB drive or large archive can create practical problems:
 
 * very slow on cheap pendrives
 * huge write overhead
@@ -145,9 +152,11 @@ Encrypting large USB drives fully creates problems:
 * temporary storage duplication
 * poor UX on multi-GB archives
 
-NullFiles chooses:
+NullFiles chooses a hybrid approach:
 
-> speed + portability + practicality over heavy cryptographic full-file encryption
+> speed + portability by default, stronger encryption only where needed
+
+That makes it practical for removable media while still allowing targeted protection for important files.
 
 ---
 
@@ -159,6 +168,10 @@ Runs directly from USB without installation.
 **Fast locking/unlocking**
 
 Moving + renaming is dramatically faster than encrypting large files.
+
+**Optional recursive encryption**
+
+Selected files and folders can be encrypted inside the vault.
 
 **Low memory footprint**
 
@@ -182,9 +195,10 @@ Everything stays local.
 
 NullFiles is NOT:
 
-* full-disk encryption (like bitlocker, veracrypt etc etc)
-* A tool for plausible deniability (no hidden volumes).
+* full-disk encryption
+* a hidden volume / plausible deniability system
 * ransomware-proof storage
+* a replacement for BitLocker, VeraCrypt, LUKS, or other dedicated disk/container encryption systems
 
 If your threat model requires protection against forensic attackers:
 
@@ -222,14 +236,15 @@ flutter build windows
 
 NullFiles follows one principle:
 
-> On removable media, practical privacy often matters more than heavyweight encryption.
+> On removable media, practical privacy often matters more than heavyweight full-disk encryption.
 
 This tool is built for people who need:
 
 * speed
 * portability
 * simplicity
-* plausible privacy on external drives
+* practical privacy on external drives
+* optional deeper protection for selected files
 
 ---
 
@@ -246,4 +261,4 @@ If you lose:
 your files may become unrecoverable.
 
 > [!IMPORTANT]
-> NullFiles is designed for privacy convenience, not high-security threat models.
+> NullFiles is designed for practical privacy and selective protection on removable media. It is not intended to replace high-security full-disk encryption in hostile forensic threat models.
